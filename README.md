@@ -15,16 +15,15 @@ This program was tested in Ubuntu 14.04 LTS 64 bits
     * python 2.7 
     * python-numpy
     * python-opencv
-    * \[caffe]
- 
- [caffe]: https://github.com/NVIDIA/caffe
+    * [Caffe](https://github.com/NVIDIA/caffe) 
+
  
  
  ### Downloads
  
-    * DNNs trained are available in \[Networks]
+    * DNNs trained are available in [Networks]
  
-    * Datasets are available in \[Dataset]
+    * Datasets are available in [Dataset]
     
     
  [Networks]: https://feiedu-my.sharepoint.com/personal/isaacjesus_fei_edu_br/_layouts/15/guestaccess.aspx?folderid=054e36743516745db8ab64e9c61b71467&authkey=ASlbVagsc7eXeiq4_do7w0w
