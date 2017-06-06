@@ -1,0 +1,3 @@
+/usr/local/lib/libserial.a
+/usr/local/include/serial/serial.h
+/usr/local/include/serial/v8stdint.h
