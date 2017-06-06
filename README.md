@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/Isaac25silva/Goalkeeper-DNN.svg?branch=master)](https://travis-ci.org/Isaac25silva/Goalkeeper-DNN)
+
 # Goalkeeper-DNN
 
 
