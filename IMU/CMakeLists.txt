@@ -19,9 +19,9 @@ include_directories(
 
 include_directories(include)
 add_library(comms SHARED src/comms.cpp)
-install(TARGETS comms DESTINATION ~/RoboFEI-DNN/build/lib)
+install(TARGETS comms DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/../build/lib)
 add_library(registers SHARED src/registers.cpp)
-install(TARGETS registers DESTINATION ~/RoboFEI-DNN/build/lib)
+install(TARGETS registers DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/../build/lib)
 
 
 add_executable(imu src/imu.cpp src/INIReader.cpp src/ini.c)

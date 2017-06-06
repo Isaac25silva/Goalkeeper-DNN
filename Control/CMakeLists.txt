@@ -17,7 +17,7 @@ include_directories(
 
 include_directories(include)
 add_library(libcontrol SHARED ./Linux/project/control/main.cpp ./Linux/project/control/kbhit.cpp ./Linux/project/control/ReadConfig.cpp ./Linux/project/control/ActionMove.cpp ./Linux/project/control/GaitMove.cpp)
-install(TARGETS libcontrol DESTINATION ~/RoboFEI-DNN/build/lib)
+install(TARGETS libcontrol DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/../build/lib)
 
 
 #cria executável
@@ -26,7 +26,7 @@ add_executable(control ./Linux/project/control/main.cpp)
 #adiciona as dependências
 add_dependencies(control libcontrol blackboard)
 
-set(LIB_DARWIN ~/RoboFEI-DNN/Control/Linux/lib/darwin.a)
+set(LIB_DARWIN ${CMAKE_CURRENT_SOURCE_DIR}/../Control/Linux/lib/darwin.a)
 
 target_link_libraries(control libcontrol blackboard ${LIB_DARWIN} -Wno-write-strings -lpthread -lrt ${Boost_LIBRARIES})
 
