@@ -1,8 +1,0 @@
-/home/fei/RoboFEI-DNN/IMU/serial/build/CMakeFiles/install.dir
-/home/fei/RoboFEI-DNN/IMU/serial/build/CMakeFiles/list_install_components.dir
-/home/fei/RoboFEI-DNN/IMU/serial/build/CMakeFiles/rebuild_cache.dir
-/home/fei/RoboFEI-DNN/IMU/serial/build/CMakeFiles/edit_cache.dir
-/home/fei/RoboFEI-DNN/IMU/serial/build/CMakeFiles/serial_example.dir
-/home/fei/RoboFEI-DNN/IMU/serial/build/CMakeFiles/serial.dir
-/home/fei/RoboFEI-DNN/IMU/serial/build/CMakeFiles/install/local.dir
-/home/fei/RoboFEI-DNN/IMU/serial/build/CMakeFiles/install/strip.dir
