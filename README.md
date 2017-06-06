@@ -7,7 +7,7 @@
 
 ### Setup
 
-Compile the code of the robot running *./setup.sh* in RoboFEI-DNN directory.
+Compile the code of the robot running *./setup.sh* in Goalkeeper-DNN directory.
 
 ### OS and dependencies.
 
