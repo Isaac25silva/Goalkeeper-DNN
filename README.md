@@ -5,9 +5,9 @@
 
 ### Setup
 
-1. compile the code of the robot running *./setup.sh* in RoboFEI-DNN directory.
+Compile the code of the robot running *./setup.sh* in RoboFEI-DNN directory.
 
-## OS and dependencies.
+### OS and dependencies.
 
 This program was tested in Ubuntu 14.04 LTS 64 bits
 
