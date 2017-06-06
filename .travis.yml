@@ -7,6 +7,12 @@ python:
 before_install:
  - sudo apt-get install libboost-all-dev
  - sudo apt-get install libncurses5-dev
- 
+
+install:
+ - cd ./Control/Linux/build_Framework
+ - make clean
+ - make all
+ - cd ../../../
+
 script:
  - ./setup.sh
