@@ -1,6 +1,8 @@
 # Goalkeeper-DNN
 
 
+[![Goalkeeper Robot]()](https://youtu.be/b3tebN9dwN8)
+
 ### Setup
 
 1. compile the code of the robot running *./setup.sh* in RoboFEI-DNN directory.
