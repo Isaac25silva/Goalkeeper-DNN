@@ -1,7 +1,7 @@
 # Goalkeeper-DNN
 
 
-[![Goalkeeper Robot]()](https://youtu.be/b3tebN9dwN8)
+[![Goalkeeper Robot](goalkeeper.jpg)](https://youtu.be/b3tebN9dwN8)
 
 ### Setup
 
