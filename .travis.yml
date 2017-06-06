@@ -1,0 +1,12 @@
+dist: trusty
+language: python
+
+python:
+- "2.7"
+
+before_install:
+ - sudo apt-get install libboost-all-dev
+ - sudo apt-get install libncurses5-dev
+ 
+script:
+ - ./setup.sh
