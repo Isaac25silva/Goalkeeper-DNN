@@ -14,9 +14,10 @@ import tarfile
 import tempfile
 import time
 import zipfile
-
+from math import log,exp,tan,radians
+import thread
 from defs import *
-
+import imutils
 
 
 import ctypes
@@ -86,7 +87,7 @@ def classify(image_files, net, transformer,
     #
     results = {}
 
-    indices = (-scores).argsort()[:, :7]  # take top 9 results
+    indices = (-scores).argsort()  # take top 9 results
     classifications = []
     for image_index, index_list in enumerate(indices):
         result = []
@@ -151,6 +152,62 @@ def soma_prob(mem_p, gamma = 0.9):
 #     print soma
     return soma
 
+
+
+
+
+def thread_DNN():
+    time.sleep(1)
+
+    while True:
+#		script_start_time = time.time()
+
+#		print "FRAME = ", time.time() - script_start_time
+        start1 = time.time()
+#===============================================================================
+        if args2.visionball:
+            cv2.imshow('frame',frame)
+
+
+        if frame==None:
+            print "No image"
+        else:
+            type_label, results = classify(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), net, transformer,
+                                mean_file=mean_file, labels=labels,
+                                batch_size=None)
+
+            for index in labels:
+                a = list(mem_p[index])
+                del a[0]
+                mem_p[index] = a
+                b = list(mem_p[index])
+                b.append(results[index])
+                mem_p[index] = b
+        #                print index, mem_p[index]
+        #            print type_label, number_label[type_label], results[type_label]
+            prob_values = soma_prob(mem_p)
+#                print prob_values
+            label_max_prob =  max(prob_values, key=prob_values.get)
+        #            testlib.escreve_int(1000000, number_label[label_max_prob])
+            print label_max_prob
+            bkb.write_int(Mem,'DECISION_ACTION_A', number_label[label_max_prob])
+            print 'Script took %f seconds.' % (time.time() - start1,)
+
+
+#===============================================================================
+#		print "tempo de varredura = ", time.time() - start
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+    cap.release()
+    cv2.destroyAllWindows()
+
+
+
+
+
+
+
+
 if __name__ == '__main__':
 
 #    testlib = ctypes.CDLL('./blackboard/blackboard.so') #chama a lybrary que contem as funÃ§Ãµes em c++
@@ -171,6 +228,7 @@ if __name__ == '__main__':
     parser.add_argument('--nogpu', action='store_true', help="Don't use the GPU")
 
     parser.add_argument('--ws', '--ws', action='store_true', help="no servo")
+    parser.add_argument('--visionball', '--vb', action="store_true", help = 'Mostra o atual frame da visao')
 
     args = vars(parser.parse_args())
     args2 = parser.parse_args()
@@ -213,7 +271,7 @@ if __name__ == '__main__':
     print number_label
 
     #buffer_t = np.zeros((10) , dtype=np.int)
-    memory_temp_size = 10
+    memory_temp_size = 7
     num_itens = len(labels)
     bucket = [0 for i in range(memory_temp_size)]
     mem_p = {}
@@ -227,16 +285,26 @@ if __name__ == '__main__':
     cap.set(3,720) #720 1280 1920
     cap.set(4,480) #480 1024 1080
 
+
+    try:
+        thread.start_new_thread(thread_DNN, ())
+    except:
+        print "Error Thread"
+
+    script_start_time_im=0
+
     while True:
-        script_start_time = time.time()
+
 #        time.sleep(0.05)
-        script_start_time_im = time.time()
+
 #        image_pointer = testlib.leitura_int()
 #        image = np.array(image_pointer[2:im_size_array]).reshape( im_height, im_width, 3)
         # Capture frame-by-frame
         ret, image = cap.read()
+        frame = image.copy()
+#        time.sleep(0.05)
         print 'Read image %f seconds.' % (time.time() - script_start_time_im,)
-
+        script_start_time_im = time.time()
             
 #        plt.imshow(image, interpolation='nearest')
 #        plt.show()
@@ -249,32 +317,13 @@ if __name__ == '__main__':
 #        if cv2.waitKey(30)>=0:
 #            exit()
 
-        if image==None:
-            print "No image"
-        else:
-            type_label, results = classify(cv2.cvtColor(image, cv2.COLOR_BGR2RGB), net, transformer,
-                        mean_file=mean_file, labels=labels,
-                        batch_size=None)
+        if args2.visionball:
+            cv2.imshow('frame_read',image)
 
-            for index in labels:
-                a = list(mem_p[index])
-                del a[0]
-                mem_p[index] = a
-                b = list(mem_p[index])
-                b.append(results[index])
-                mem_p[index] = b
-#                print index, mem_p[index]
-#            print type_label, number_label[type_label], results[type_label]
-            prob_values = soma_prob(mem_p)
-            print prob_values
-            label_max_prob =  max(prob_values, key=prob_values.get)
-#            testlib.escreve_int(1000000, number_label[label_max_prob])
-            bkb.write_int(Mem,'DECISION_ACTION_A', number_label[label_max_prob])
-        print 'Script took %f seconds.' % (time.time() - script_start_time,)
 #        print mem_p, results
 
         # Display the resulting frame
-#        cv2.imshow('frame',image)
+##        cv2.imshow('frame',image)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
