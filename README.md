@@ -38,9 +38,27 @@ This program was tested in Ubuntu 14.04 LTS 64 bits
  Use the scripts decisionDNN.py to test the DNN and run the control process to receive the decision.
  
  * Running the decision.py:
-      * cd Vision/src/
-      * python decisionDNN.py ./nets/dataset_googlenet.tar.gz --ws
+ 
+```shell
+      cd Vision/src/
+      python decisionDNN.py ./nets/dataset_googlenet.tar.gz --ws
+```
  
  * Running the control process:
-      * ./build/Control/control --p
+ 
+```shell
+      ./build/Control/control --p
+```
+
+  ### EXPERIMENTS
+  
+  * DNN accuracy and spend time to classify an image on an [Intel NUC]( http://www.intel.com/content/www/us/en/nuc/overview.html) Core i5-4250U, 8GB SDRAM, 120GB SDD.
+
+Network      | Input     | Accuracy | Mean Time[s]  | \sigma  |
+-------------|:---------:|:--------:|:-------------:|:-------:|
+Conv4        | 110x110   | 87.86    | 0.093         | 0.00602    
+Alexnet      | 110x110   | 88.00    | 0.131         | 0.00811    
+Conv4        | 256x256   | 91.57    | 0.458         | 0.02784    
+Alexnet      | 256x256   | 91.57    | 0.470         | 0.01591    
+GoogLeNet    | 256x256   | 92.86    | 0.682         | 0.03386    
 
