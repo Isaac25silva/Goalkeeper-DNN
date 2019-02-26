@@ -6,13 +6,23 @@ python:
 
 before_install:
  - sudo apt-get install libboost-all-dev
- - sudo apt-get install libncurses5-dev
-
+ - sudo apt-get update -qq
+ - sudo apt-get build-dep -qq python-pygame
+ - sudo apt-get install -qq python-pygame
+ 
 install:
- - cd ./Control/Linux/build_Framework
+ - cd ./AI/Control/Linux/build_Framework
  - make clean
  - make all
- - cd ../../../
-
+ - cd ../../../../
+ 
+ - cd ./AI/Control/Linux/project/action_editor
+ - make
+ - cd ../../../../../
+ 
 script:
- - ./setup.sh
+ - ./setup.sh r 1 g
+ - ./setup.sh s 1
+
+virtualenv:
+    system_site_packages: true

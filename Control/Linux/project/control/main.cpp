@@ -379,7 +379,7 @@ int main(int argc, char **argv)
                 same_moviment = false;
                 std::cout<< "\nAction " << read_int(mem, DECISION_ACTION_A); // Mostra o valor da ação
                 count_read=0;
-                if(read_int(mem, DECISION_ACTION_A)!=1 && read_int(mem, DECISION_ACTION_A)!=8)
+                if(read_int(mem, DECISION_ACTION_A)!=0 && read_int(mem, DECISION_ACTION_A)!=8)
                     enable_soft_starter = true;          // se diferente de andar lento ou andar rapido
             }
             buffer = read_int(mem, DECISION_ACTION_A);
@@ -398,40 +398,47 @@ int main(int argc, char **argv)
             }
 
 
-            if(read_int(mem, DECISION_ACTION_A) == 0)
+            if(read_int(mem, DECISION_ACTION_A) == 5)
             {
                 if(flag_stop==false)
                     gaitMove.robot_stop(stop_gait);
                 flag_stop = true; //variavel que indica que o robo ja estava parado, isso evita de repetir o movimento
+
+                if(read_float(mem, IMU_EULER_Z) > 0.3)
+                    gaitMove.turn_left(stop_gait, true, same_moviment);
+
+                if(read_float(mem, IMU_EULER_Z) < -0.3)
+                    gaitMove.turn_right(stop_gait, true, same_moviment);
+
             }
             else
                 flag_stop = false;
 
-            if(read_int(mem, DECISION_ACTION_A) == 1)
+            if(read_int(mem, DECISION_ACTION_A) == 99)
                 gaitMove.walk_foward_fast(stop_gait, same_moviment, enable_soft_starter);
 
-            if(read_int(mem, DECISION_ACTION_A) == 2)
+            if(read_int(mem, DECISION_ACTION_A) == 1)
                 gaitMove.turn_left(stop_gait, true, same_moviment);
 
-            if(read_int(mem, DECISION_ACTION_A) == 3)
+            if(read_int(mem, DECISION_ACTION_A) == 2)
                 gaitMove.turn_right(stop_gait, true, same_moviment);
 
             if(read_int(mem, DECISION_ACTION_A) == 4)
                 actionMove.kick_right_strong(&cm730, stop_gait);
 
-            if(read_int(mem, DECISION_ACTION_A) == 5)
+            if(read_int(mem, DECISION_ACTION_A) == 3)
                 actionMove.kick_left_strong(&cm730, stop_gait);
 
-            if(read_int(mem, DECISION_ACTION_A) == 6)
+            if(read_int(mem, DECISION_ACTION_A) == 99)
                 gaitMove.sidle_left(stop_gait, same_moviment);
 
-            if(read_int(mem, DECISION_ACTION_A) == 7)
+            if(read_int(mem, DECISION_ACTION_A) == 99)
                 gaitMove.sidle_right(stop_gait, same_moviment);
 
-            if(read_int(mem, DECISION_ACTION_A) == 8)
+            if(read_int(mem, DECISION_ACTION_A) == 0)
                 gaitMove.walk_foward_slow(stop_gait, false, same_moviment, enable_soft_starter);
 
-            if(read_int(mem, DECISION_ACTION_A) == 9)
+            if(read_int(mem, DECISION_ACTION_A) == 99)
                 gaitMove.turn_around_ball_left(stop_gait, same_moviment);
 
             if(read_int(mem, DECISION_ACTION_A) == 10)
@@ -467,7 +474,7 @@ int main(int argc, char **argv)
             {
                 gaitMove.walk_backward_fast(stop_gait, same_moviment);
             }
-            if(read_int(mem, DECISION_ACTION_A) == 18)
+            if(read_int(mem, DECISION_ACTION_A) == 6)
             {
                 gaitMove.walk_backward_slow(stop_gait, true, same_moviment);
             }

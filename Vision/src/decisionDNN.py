@@ -7,16 +7,16 @@
 Classify an image using a model archive file
 """
 
-
+import base64
+import h5py
+import logging
+import PIL.Image
 import argparse
 import os
-import tarfile
 import tempfile
 import time
-import zipfile
 from math import log,exp,tan,radians
 import thread
-from defs import *
 import imutils
 
 
@@ -42,6 +42,8 @@ except ImportError:
     """For versions < 3.0 """
     from ConfigParser import ConfigParser 
 
+
+
 """ Instantiate bkb as a shared memory """
 bkb = SharedMemory()
 """ Config is a new configparser """
@@ -55,87 +57,173 @@ mem_key = int(3)*100
 Mem = bkb.shd_constructor(mem_key)
 
 
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from StringIO import StringIO
 
-def classify(image_files, net, transformer,
-             mean_file=None, labels=None, batch_size=None):
+# Add path for DIGITS package
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+import digits.config  # noqa
+from digits import utils, log  # noqa
+from digits.inference.errors import InferenceError  # noqa
+from digits.job import Job  # noqa
+from digits.utils.lmdbreader import DbReader  # noqa
+#from camvideostream import WebcamVideoStream
+
+# Import digits.config before caffe to set the path
+import caffe_pb2  # noqa
+
+logger = logging.getLogger('digits.tools.inference')
+
+
+
+def read_labels(labels_file):
     """
-    Classify some images against a Caffe model and print the results
+    Returns a list of strings
 
     Arguments:
-    caffemodel -- path to a .caffemodel
-    deploy_file -- path to a .prototxt
-    image_files -- list of paths to images
-
-    Keyword arguments:
-    mean_file -- path to a .binaryproto
-    labels_file path to a .txt file
-    use_gpu -- if True, run inference on the GPU
+    labels_file -- path to a .txt file
     """
-#    if channels == 3:
-#        mode = 'RGB'
-#    elif channels == 1:
-#        mode = 'L'
-#    else:
-#        raise ValueError('Invalid number for channels: %s' % channels)
-    images = [image_files]
+    if not labels_file:
+        print 'WARNING: No labels file provided. Results will be difficult to interpret.'
+        return None
 
-    # Classify the image
-    scores = forward_pass(images, net, transformer, batch_size=batch_size)
+    labels = []
+    with open(labels_file) as infile:
+        for line in infile:
+            label = line.strip()
+            if label:
+                labels.append(label)
+    assert len(labels), 'No labels found'
+    return labels
 
-    #
-    # Process the results
-    #
-    results = {}
 
-    indices = (-scores).argsort()  # take top 9 results
-    classifications = []
-    for image_index, index_list in enumerate(indices):
-        result = []
-        for i in index_list:
-            # 'i' is a category in labels and also an index into scores
-            if labels is None:
-                label = 'Class #%s' % i
-            else:
-                label = labels[i]
-            result.append((label, round(100.0 * scores[image_index, i], 4)))
-        classifications.append(result)
-
-    for index, classification in enumerate(classifications):
-        print '{:-^80}'.format(' Prediction for image ')
-        for label, confidence in classification:
-            print '{:9.4%} - "{}"'.format(confidence / 100.0, label)
-            results[label] = confidence / 100.0
-        print
-    return classification[0][0], results
-
-def unzip_archive(archive):
+def infer(jobs_dir,
+          model_id,
+          epoch):
     """
-    Unzips an archive into a temporary directory
-    Returns a link to that directory
-
-    Arguments:
-    archive -- the path to an archive file
+    Perform inference on a list of images using the specified model
     """
-    assert os.path.exists(archive), 'File not found - %s' % archive
+    # job directory defaults to that defined in DIGITS config
+    if jobs_dir == 'none':
+        jobs_dir = digits.config.config_value('jobs_dir')
 
-    tmpdir = os.path.join(tempfile.gettempdir(), os.path.basename(archive))
-    assert tmpdir != archive  # That wouldn't work out
+    # load model job
+    model_dir = os.path.join(jobs_dir, model_id)
+    assert os.path.isdir(model_dir), "Model dir %s does not exist" % model_dir
+    model = Job.load(model_dir)
 
-    if os.path.exists(tmpdir):
-        # files are already extracted
-        pass
+    # load dataset job
+    dataset_dir = os.path.join(jobs_dir, model.dataset_id)
+    assert os.path.isdir(dataset_dir), "Dataset dir %s does not exist" % dataset_dir
+    dataset = Job.load(dataset_dir)
+    for task in model.tasks:
+        task.dataset = dataset
+
+    # retrieve snapshot file
+    task = model.train_task()
+    snapshot_filename = None
+    epoch = float(epoch)
+    if epoch == -1 and len(task.snapshots):
+        # use last epoch
+        epoch = task.snapshots[-1][1]
+        snapshot_filename = task.snapshots[-1][0]
     else:
-        if tarfile.is_tarfile(archive):
-            print 'Extracting tarfile ...'
-            with tarfile.open(archive) as tf:
-                tf.extractall(path=tmpdir)
-        elif zipfile.is_zipfile(archive):
-            print 'Extracting zipfile ...'
-            with zipfile.ZipFile(archive) as zf:
-                zf.extractall(path=tmpdir)
+        for f, e in task.snapshots:
+            if e == epoch:
+                snapshot_filename = f
+                break
+    if not snapshot_filename:
+        raise InferenceError("Unable to find snapshot for epoch=%s" % repr(epoch))
+    return epoch, dataset, model
+
+
+
+def inferencia(epoch, dataset, model, image, labels):
+    # retrieve image dimensions and resize mode
+    gpu = None
+    resize = 'store_true'
+    layers = 'none'
+    input_is_db = 'store_true'
+    image_dims = dataset.get_feature_dims()
+    height = image_dims[0]
+    width = image_dims[1]
+    channels = image_dims[2]
+    resize_mode = dataset.resize_mode if hasattr(dataset, 'resize_mode') else 'squash'
+
+    n_input_samples = 0  # number of samples we were able to load
+#    input_ids = []       # indices of samples within file list
+    input_data = []      # sample data
+
+    try:
+        if resize:
+            image = utils.image.resize_image(
+                image,
+                height,
+                width,
+                channels=channels,
+                resize_mode=resize_mode)
         else:
-            raise ValueError('Unknown file type for %s' % os.path.basename(archive))
-    return tmpdir
+            image = utils.image.image_to_array(
+                image,
+                channels=channels)
+#                input_ids.append(idx)
+        input_data.append(image)
+        n_input_samples = n_input_samples + 1
+    except utils.errors.LoadImageError as e:
+        print e
+
+    # perform inference
+    visualizations = None
+
+    if n_input_samples == 0:
+        raise InferenceError("Unable to load any image")
+    elif n_input_samples == 1:
+        # single image inference
+        outputs, visualizations = model.train_task().infer_one(
+            input_data[0],
+            snapshot_epoch=epoch,
+            layers=layers,
+            gpu=gpu,
+            resize=resize)
+        print "one image-----------"
+    else:
+        if layers != 'none':
+            raise InferenceError("Layer visualization is not supported for multiple inference")
+        outputs = model.train_task().infer_many(
+            input_data,
+            snapshot_epoch=epoch,
+            gpu=gpu,
+            resize=resize)
+        print "many images-----------"
+
+    # write to hdf5 file
+##    print outputs['softmax']
+    for ind in outputs['softmax']:
+        a = ind.sum()
+#        a = np.sum(ind)
+        b = (ind/a)*100
+#        print a
+#        print (ind/a)*100
+#        label = np.array(['center', 'left','right', 'kleft', 'kright'])
+        results = {}
+        print '{:-^80}'.format(' Prediction for images')
+#        print labels, b
+        count = 0
+        for conf in b:
+            print ('%2.4f' % conf), labels[count]
+            results[labels[count]] = round(conf / 100.0, 6)
+            count+=1
+            if count ==7:
+                break
+        print
+#        print results, max(results, key=results.get)
+
+    return max(results, key=results.get), results
+
+
+
 
 def soma_prob(mem_p, gamma = 0.9):
     #gamma Ã© o valor de desconto
@@ -157,7 +245,7 @@ def soma_prob(mem_p, gamma = 0.9):
 
 
 def thread_DNN():
-    time.sleep(1)
+    time.sleep(2)
 
     while True:
 #		script_start_time = time.time()
@@ -168,13 +256,14 @@ def thread_DNN():
         if args2.visionball:
             cv2.imshow('frame',frame)
 
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
 
-        if frame==None:
+        if frame.all()==None:
             print "No image"
         else:
-            type_label, results = classify(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), net, transformer,
-                                mean_file=mean_file, labels=labels,
-                                batch_size=None)
+            type_label, results = inferencia( epoch_r, dataset, model, cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), labels)
+#            print type_label, results
 
             for index in labels:
                 a = list(mem_p[index])
@@ -196,8 +285,7 @@ def thread_DNN():
 
 #===============================================================================
 #		print "tempo de varredura = ", time.time() - start
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+
     cap.release()
     cv2.destroyAllWindows()
 
@@ -214,61 +302,47 @@ if __name__ == '__main__':
 #    testlib.using_shared_memory()   #usando a funÃ§Ã£o do c++
 #    testlib.leitura_int.restype = ctypes.POINTER(ctypes.c_int) #define o tipo de retorno da funÃ§Ã£o, neste caso a funÃ§Ã£o retorna ponteiro int
 
-    
+#    net_address = "DNN_ballClass"
+    net_address = "squeezenet"
+    path_jobs_dir = '/home/fei/RoboFEI-DNN/Vision/src/nets'
+
+
     """ Instantiate bkb as a shared memory """
     bkb = SharedMemory()
 
-    parser = argparse.ArgumentParser(description='Classification example using an archive - DIGITS')
+    parser = argparse.ArgumentParser(description='Inference tool - DIGITS')
 
     # Positional arguments
-    parser.add_argument('archive', help='Path to a DIGITS model archive')
-    #parser.add_argument('image_file', nargs='+', help='Path[s] to an image')
-    # Optional arguments
-    parser.add_argument('--batch-size', type=int)
-    parser.add_argument('--nogpu', action='store_true', help="Don't use the GPU")
+
+    parser.add_argument(
+        '--db',
+        action='store_true',
+        help='Input file is a database',
+    )
+
+    parser.add_argument(
+        '--resize',
+        dest='resize',
+        action='store_true')
+
+    parser.add_argument(
+        '--no-resize',
+        dest='resize',
+        action='store_false')
 
     parser.add_argument('--ws', '--ws', action='store_true', help="no servo")
     parser.add_argument('--visionball', '--vb', action="store_true", help = 'Mostra o atual frame da visao')
 
+    parser.set_defaults(resize=True)
+
     args = vars(parser.parse_args())
     args2 = parser.parse_args()
 
-    tmpdir = unzip_archive(args['archive'])
-    caffemodel = None
-    deploy_file = None
-    mean_file = None
-    labels_file = None
-    for filename in os.listdir(tmpdir):
-        full_path = os.path.join(tmpdir, filename)
-        if filename.endswith('.caffemodel'):
-            caffemodel = full_path
-        elif filename == 'deploy.prototxt':
-            deploy_file = full_path
-        elif filename.endswith('.binaryproto'):
-            mean_file = full_path
-        elif filename == 'labels.txt':
-            labels_file = full_path
-        else:
-            print 'Unknown file:', filename
-
-    assert caffemodel is not None, 'Caffe model file not found'
-    assert deploy_file is not None, 'Deploy file not found'
-
-    # Load the model and images
-    net = get_net(caffemodel, deploy_file, use_gpu=False)
-    transformer = get_transformer(deploy_file, mean_file)
-    _, channels, height, width = transformer.inputs['data']
-    labels = read_labels(labels_file)
-
-#    image_pointer = testlib.leitura_int()
-#    im_width = image_pointer[0]
-#    im_height = image_pointer[1]
-#    im_size_array = im_width*im_height*3+2
-#    image = np.zeros([im_width,im_height,3])
-
-    #create index from label to use in decicion action
+    #read labels
+    labels = read_labels(path_jobs_dir+'/'+net_address+'/labels.txt')
+#        print labels
     number_label =  dict(zip(labels, range(len(labels))))
-    print number_label
+#        print number_label
 
     #buffer_t = np.zeros((10) , dtype=np.int)
     memory_temp_size = 7
@@ -279,11 +353,22 @@ if __name__ == '__main__':
         mem_p[i] = bucket
 
     if not args2.ws:
-        servo = Servo(436, 700)
+        servo = Servo(583, 330)
 #    os.system("v4l2-ctl -d /dev/video0 -c focus_auto=0 && v4l2-ctl -d /dev/video0 -c focus_absolute=0")
     cap = cv2.VideoCapture(0)
     cap.set(3,720) #720 1280 1920
     cap.set(4,480) #480 1024 1080
+
+
+    try:
+        epoch_r, dataset, model = infer(
+            jobs_dir = path_jobs_dir,
+            model_id = net_address,
+            epoch = '-1'
+        )
+    except Exception as e:
+        logger.error('%s: %s' % (type(e).__name__, e.message))
+        raise
 
 
     try:
@@ -302,7 +387,7 @@ if __name__ == '__main__':
         # Capture frame-by-frame
         ret, image = cap.read()
         frame = image.copy()
-#        time.sleep(0.05)
+#        time.sleep(0.03)
         print 'Read image %f seconds.' % (time.time() - script_start_time_im,)
         script_start_time_im = time.time()
             
@@ -317,15 +402,15 @@ if __name__ == '__main__':
 #        if cv2.waitKey(30)>=0:
 #            exit()
 
-        if args2.visionball:
-            cv2.imshow('frame_read',image)
+#        if args2.visionball:
+#            cv2.imshow('frame_read',image)
 
 #        print mem_p, results
 
         # Display the resulting frame
 ##        cv2.imshow('frame',image)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+#        if cv2.waitKey(1) & 0xFF == ord('q'):
+#            break
 
     # When everything done, release the capture
     cap.release()
