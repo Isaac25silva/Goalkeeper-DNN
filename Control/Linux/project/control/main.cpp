@@ -5,7 +5,7 @@
 * @author Isaac Jesus da Silva - ROBOFEI-HT - FEI 😛
 * @version V2.2.0
 * @created 20/01/2015
-* @Modified 15/05/2017
+* @Modified 15/02/2019
 * @e-mail isaac25silva@yahoo.com.br
 * @brief control 😛
 ****************************************************************************
