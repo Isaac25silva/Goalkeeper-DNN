@@ -1,5 +1,3 @@
-
-
 sudo apt install libboost-all-dev
 sudo apt install libncurses5-dev
 
