@@ -26,3 +26,4 @@ install:
  - cd build
  - cmake ../
  - make all
+ - cd
