@@ -29,5 +29,3 @@ install:
  - cmake ../
  - make all
 
-virtualenv:
-    system_site_packages: true
