@@ -8,5 +8,5 @@ before_install:
  - sudo apt install libboost-all-dev
  - sudo apt install libncurses5-dev
  - sudo apt-get install libboost-all-dev
- - sudo apt-get update -qq
+ - sudo apt-get update
 
