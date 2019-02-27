@@ -1,5 +1,8 @@
 dist: trusty
 
+compiler:
+  - gcc
+
 before_install:
  - sudo apt install libboost-all-dev
  - sudo apt install libncurses5-dev
