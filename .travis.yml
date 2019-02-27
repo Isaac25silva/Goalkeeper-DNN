@@ -5,32 +5,32 @@ python:
 - "2.7"
 
 before_install:
-sudo apt install libboost-all-dev
-sudo apt install libncurses5-dev
-sudo apt-get install libboost-all-dev
-sudo apt-get update -qq
-sudo apt-get build-dep -qq python-pygame
-sudo apt-get install -qq python-pygame
+ - sudo apt install libboost-all-dev
+ - sudo apt install libncurses5-dev
+ - sudo apt-get install libboost-all-dev
+ - sudo apt-get update -qq
+ - sudo apt-get build-dep -qq python-pygame
+ - sudo apt-get install -qq python-pygame
  
 install:
 
-cd ./Control/Linux/build_Framework
-make all
-cd ../../../
+ - cd ./Control/Linux/build_Framework
+ - make all
+ - cd ../../../
 
-cd ./IMU/serial
-mkdir build
-cd build
-cmake ..
-sudo make install
+ - cd ./IMU/serial
+ - mkdir build
+ - cd build
+ - cmake ..
+ - sudo make install
 
-cd ../../../
+ - cd ../../../
 
-mkdir build
-cd build
-cmake ../
-make all
-make install
+ - mkdir build
+ - cd build
+ - cmake ../
+ - make all
+ - make install
 
 virtualenv:
     system_site_packages: true
