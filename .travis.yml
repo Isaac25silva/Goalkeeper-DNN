@@ -1,32 +1,18 @@
 dist: trusty
+language: python
 
-language: c++
-
-compiler:
-  - clang
-  - gcc
+python:
+- "2.7"
 
 before_install:
- - sudo apt install libboost-all-dev
- - sudo apt install libncurses5-dev
  - sudo apt-get install libboost-all-dev
+ - sudo apt-get install libncurses5-dev
 
- 
 install:
  - cd ./Control/Linux/build_Framework
+ - make clean
  - make all
  - cd ../../../
 
- - cd ./IMU/serial
- - mkdir build
- - cd build
- - cmake ..
- - sudo make install
-
- - cd ../../../
-
- - mkdir build
- - cd build
- - cmake ../
- - make all
- - cd
+script:
+ - ./setup.sh
